@@ -1,0 +1,73 @@
+---
+title: "Initial Data Exploration"
+output: html_notebook
+---
+
+# Data Exploration
+Notebook to perform initial analysis on dataset contents and structure.
+
+## Unzip data
+```{r}
+unzip(zipfile = "../data/raw/medical_students_dataset.zip", exdir = "../data/raw/")
+```
+
+## Load Data 
+```{r}
+data <- read.csv('../data/raw/medical_students_dataset.csv')
+```
+
+## Analyse Dataset Structure
+There are 200,000 rows and 13 columns.
+
+```{r}
+nrow(data)
+```
+
+``` {r}
+# Columns
+ncol(data)
+```
+## Analyse First Rows
+There appear to be missing values
+
+``` {r}
+head(data)
+```
+
+## Analyse Column Names/ Data Types
+``` {r}
+str(data)
+```
+
+## Analyse Categorical Variables
+
+### Gender
+Binary: male/female
+```{r} 
+unique(data$Gender)
+```
+
+### Blood.Type
+Four categories: O, A, B, AB
+```{r}
+unique(data$Blood.Type)
+```
+
+### Diabetes
+Binary: Yes/No
+```{r}
+unique(data$Diabetes)
+```
+
+### Smoking
+Binary: Yes/No
+```{r}
+unique(data$Smoking)
+```
+
+
+# Conclusions
+
+This dataset is very different to the accompanying description of this dataset. 
+ - Rows: 200,000 > 100,000
+ - Columns: Do not match descriptions.
