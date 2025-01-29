@@ -1,0 +1,217 @@
+---
+title: "Missing Data Analysis"
+output: html_notebook
+---
+
+# Data Exploration
+Notebook to perform initial analysis on missing values.
+
+## Unzip data
+```{r}
+unzip(zipfile = "../data/raw/medical_students_dataset.zip", exdir = "../data/raw/")
+```
+
+## Load Data 
+```{r}
+data <- read.csv('../data/raw/medical_students_dataset.csv')
+```
+
+## Overall Missing Values
+There are missing values in the dataset
+```{r}
+any(is.na(data))
+```
+## Column Wise Missing Values
+```{r}
+colSums(is.na(data))
+```
+
+Of the 13 columns, 8 columns have missing values:
+- Student.ID
+- Age
+- Height
+- Weight
+- BMI
+- Temperature
+- Heart Rate
+- Blood Pressure
+- Cholesterol
+
+The number of missing values in each of these columns is 20,000; which represents
+10% of the dataset.
+
+
+Given that each column has the same number of missing values, the cause of the
+missing values is likely **Not Random**
+
+## Row Wise Missing Values
+```{r}
+sum(rowSums(is.na(data)) >= 1)
+```
+There are 122,644 rows which consist of at least 1 missing value; which represents
+~ 61.3% of the dataset.
+
+## Row Analysis
+This section analyses the degree of missing values among each row
+
+```{r}
+
+missing_summary <- data.frame(
+  Missing_Values = ncol(data):0,  # Ensure 0 intact values are included
+  Rows_Affected = sapply(ncol(data):0, function(i) sum(rowSums(is.na(data)) == i)),
+  Percent_Missing = round((ncol(data):0) / ncol(data) * 100, 1)  # Compute % intact
+)
+
+missing_summary <- missing_summary[nrow(missing_summary):1, ]
+rownames(missing_summary) <- NULL
+
+print(missing_summary)
+
+```
+## Data Integrity Analysis
+
+- 38.7% of the data set is 100%  intact
+- 60.4% of data is missing between 1 - 3 values (~76% - 91.2% intact)
+- Correcting these values will increase data integrity from 38.7% to 99.1%
+
+```{r}
+missing_count <- 0:ncol(data)
+rows_by_missing_col <- sapply(missing_count, function(i) {
+  sum(rowSums(is.na(data)) == i)
+})
+rows_percentage <- rows_by_missing_col / nrow(data) * 100
+
+bar_positions  <- barplot(
+  rows_percentage,
+  names.arg = missing_count,
+  xlab = "Number of Missing Columns",
+  ylab = "Percentage of Rows by Missing Column Count",
+  main = "Percentage of Rows by Missing Column Count",
+  col = "skyblue",
+  ylim = c(0, 100)
+)
+
+text(
+  x = bar_positions, 
+  y = rows_percentage, 
+  labels = paste0(round(rows_percentage, 1), "%"), 
+  pos = 3, 
+  cex = 0.8, 
+  col = "black" 
+)
+
+```
+
+# Imputing Student IDs
+Given that these are identification values and should be unique, we may safely impute a new number for the
+data.
+
+```{r}
+# Imputing the new ids
+max_id <- max(data$Student.ID, na.rm = TRUE)
+missing_id_row_idxs <- which(is.na(data$Student.ID))
+data$Student.ID[missing_id_row_idxs] <- seq(max_id + 1, max_id + length(missing_id_row_idxs))
+```
+
+## Reevaluate Missingness
+
+### Column Wise Missing Values
+- No missing values in Id
+```{r}
+colSums(is.na(data))
+```
+### Summary of Student ID
+- Max value is way beneath n_rows; severe red flag
+
+
+```{r}
+summary(data$Student.ID)
+```
+### Check Duplicate IDs
+
+```{r}
+sum(duplicated(data$Student.ID))
+```
+This would be grounds to discard the entire dataset. But we will remedy this by 
+reimputing new ids for all participants and we will assume each entry represents
+a unique individual.
+
+```{r}
+data$Student.ID <- seq(1, nrow(data))
+```
+
+```{r}
+summary(data$Student.ID)
+```
+```{r}
+sum(duplicated(data$Student.ID))
+```
+## Data Integrity Analysis
+We will perform the integrity analysis again to determine the influence of missing ID on data integrity
+
+### Row Wise Missing Values
+```{r}
+sum(rowSums(is.na(data)) >= 1)
+```
+There are 113,995 rows which consist of at least 1 missing value; which represents
+~ 56.9% of the dataset.
+~ Imputing the Ids improved data integrity by 4.4%.
+
+### Row Analysis
+This section analyses the degree of missing values among each row
+
+```{r}
+
+missing_summary <- data.frame(
+  Missing_Values = ncol(data):0,  # Ensure 0 intact values are included
+  Rows_Affected = sapply(ncol(data):0, function(i) sum(rowSums(is.na(data)) == i)),
+  Percent_Missing = round((ncol(data):0) / ncol(data) * 100, 1)  # Compute % intact
+)
+
+missing_summary <- missing_summary[nrow(missing_summary):1, ]
+rownames(missing_summary) <- NULL
+
+print(missing_summary)
+
+```
+
+- 43.1% of the data set is 100% intact
+- 56.5% of data is missing between 1 - 3 values (~76% - 91.2% intact)
+- Correcting these values will increase data integrity from 43.1% to 99.6%
+
+```{r}
+missing_count <- 0:ncol(data)
+rows_by_missing_col <- sapply(missing_count, function(i) {
+  sum(rowSums(is.na(data)) == i)
+})
+rows_percentage <- rows_by_missing_col / nrow(data) * 100
+
+bar_positions  <- barplot(
+  rows_percentage,
+  names.arg = missing_count,
+  xlab = "Number of Missing Columns",
+  ylab = "Percentage of Rows by Missing Column Count",
+  main = "Percentage of Rows by Missing Column Count Post Id Imputation",
+  col = "skyblue",
+  ylim = c(0, 100)
+)
+
+text(
+  x = bar_positions, 
+  y = rows_percentage, 
+  labels = paste0(round(rows_percentage, 1), "%"), 
+  pos = 3, 
+  cex = 0.8, 
+  col = "black" 
+)
+
+```
+
+
+# Conclusions
+- This dataset would be discarded under normal circumstances due to severe duplications of participant ID.
+- Imputing IDs improved data integrity from 38.7% to 43.1%
+- 56.9% missing values in the dataset is considerable data corruption.
+- Dropping rows with missing values would keep data pure, but would discard lots of good data.
+- Mean imputation is quick remedy, but mean replacement value would account for 10% of column data.
+- Nearest Neighbour imputation may be good candidate for data rehabilitaion.
